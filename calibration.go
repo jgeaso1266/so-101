@@ -1203,7 +1203,11 @@ func (cs *so101CalibrationSensor) discoverOneMotor(ctx context.Context, expected
 	}
 
 	if len(discovered) > 1 {
-		return nil, 0, fmt.Errorf("multiple servos found (%d) - connect only one motor", len(discovered))
+		return nil, 0, fmt.Errorf(
+			"multiple servos found (%d): motor setup requires connecting motors one at a time. "+
+				"Disconnect all but the motor being configured, or use the web setup app at "+
+				"https://so101-setup_devrel.viamapplications.com which handles this automatically",
+			len(discovered))
 	}
 
 	servo := discovered[0]
@@ -1223,7 +1227,11 @@ func (cs *so101CalibrationSensor) assignMotorIDAndBaudrate(currentID, targetID, 
 	// Get the servo instance
 	servo, exists := cs.controller.calibratedServos[currentID]
 	if !exists {
-		return fmt.Errorf("servo with ID %d not found in controller", currentID)
+		return fmt.Errorf(
+			"servo with ID %d not found in controller: motor ID assignment requires "+
+				"connecting only the target motor. Use the web setup app at "+
+				"https://so101-setup_devrel.viamapplications.com for guided motor setup",
+			currentID)
 	}
 
 	// Create context for operations
