@@ -339,7 +339,7 @@ func (g *so101Gripper) DoCommand(ctx context.Context, cmd map[string]interface{}
 }
 
 func (g *so101Gripper) Close(ctx context.Context) error {
-	ReleaseSharedController()
+	g.controller.Release()
 	return nil
 }
 

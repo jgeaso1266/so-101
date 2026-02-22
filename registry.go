@@ -3,7 +3,6 @@ package so_arm
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,16 +23,11 @@ type ControllerEntry struct {
 type ControllerRegistry struct {
 	entries map[string]*ControllerEntry // port path -> entry
 	mu      sync.RWMutex
-
-	// For backward API compatibility - track which caller uses which port
-	callerPorts map[uintptr]string // caller pointer -> port path
-	callerMu    sync.RWMutex
 }
 
 func NewControllerRegistry() *ControllerRegistry {
 	return &ControllerRegistry{
-		entries:     make(map[string]*ControllerEntry),
-		callerPorts: make(map[uintptr]string),
+		entries: make(map[string]*ControllerEntry),
 	}
 }
 
@@ -93,7 +87,6 @@ func (r *ControllerRegistry) getExistingController(entry *ControllerEntry, confi
 	}
 
 	atomic.AddInt64(&entry.refCount, 1)
-	r.trackCaller(entry.config.Port)
 
 	return entry.controller, nil
 }
@@ -192,6 +185,7 @@ func (r *ControllerRegistry) createNewController(portPath string, config *SoArm1
 	}
 
 	entry.controller = &SafeSoArmController{
+		portPath:         config.Port,
 		bus:              bus,
 		group:            group,
 		calibratedServos: calibratedServos,
@@ -204,8 +198,6 @@ func (r *ControllerRegistry) createNewController(portPath string, config *SoArm1
 	atomic.StoreInt64(&entry.refCount, 1)
 
 	r.entries[portPath] = entry
-
-	r.trackCaller(portPath)
 
 	if config.Logger != nil {
 		config.Logger.Debugf("Created new feetech servo bus with %d servos for port %s", len(calibratedServos), portPath)
@@ -315,36 +307,6 @@ func (r *ControllerRegistry) GetCurrentCalibration(portPath string) SO101FullCal
 	entry.mu.RLock()
 	defer entry.mu.RUnlock()
 	return entry.calibration
-}
-
-func (r *ControllerRegistry) trackCaller(portPath string) {
-	pc, _, _, ok := runtime.Caller(3) // 3 levels up to get the actual caller
-	if !ok {
-		return
-	}
-
-	r.callerMu.Lock()
-	r.callerPorts[pc] = portPath
-	r.callerMu.Unlock()
-}
-
-func (r *ControllerRegistry) releaseFromCaller() {
-	pc, _, _, ok := runtime.Caller(2) // 2 levels up to get the actual caller
-	if !ok {
-		return
-	}
-
-	r.callerMu.RLock()
-	portPath, exists := r.callerPorts[pc]
-	r.callerMu.RUnlock()
-
-	if exists {
-		r.ReleaseController(portPath)
-
-		r.callerMu.Lock()
-		delete(r.callerPorts, pc)
-		r.callerMu.Unlock()
-	}
 }
 
 // compareConfigs returns a string describing the differences between two configs

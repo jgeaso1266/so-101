@@ -38,10 +38,6 @@ func TestRegistryCreation(t *testing.T) {
 		t.Fatal("Registry entries map not initialized")
 	}
 
-	if registry.callerPorts == nil {
-		t.Fatal("Registry callerPorts map not initialized")
-	}
-
 	if len(registry.entries) != 0 {
 		t.Fatal("Registry should start empty")
 	}
@@ -416,6 +412,34 @@ func TestControllerUsesServoCalibrationWhenNoFile(t *testing.T) {
 	// The key is ensuring the code path is correct
 
 	t.Skip("Integration test - requires hardware or mock bus setup")
+}
+
+func TestReleaseByPortPath(t *testing.T) {
+	registry := NewControllerRegistry()
+
+	// Inject two entries
+	for _, port := range []string{"/dev/ttyUSB0", "/dev/ttyUSB1"} {
+		entry := &ControllerEntry{
+			config:      testConfig(port),
+			calibration: DefaultSO101FullCalibration,
+			refCount:    1,
+		}
+		registry.mu.Lock()
+		registry.entries[port] = entry
+		registry.mu.Unlock()
+	}
+
+	// Release the first port
+	registry.ReleaseController("/dev/ttyUSB0")
+
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+	if _, exists := registry.entries["/dev/ttyUSB0"]; exists {
+		t.Error("port /dev/ttyUSB0 should have been released")
+	}
+	if _, exists := registry.entries["/dev/ttyUSB1"]; !exists {
+		t.Error("port /dev/ttyUSB1 should still exist")
+	}
 }
 
 // TestCreateNewControllerPointerIdentity verifies that the pointer stored in the registry

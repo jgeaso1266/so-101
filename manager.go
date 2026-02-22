@@ -20,6 +20,7 @@ func isGripperServo(servoID int) bool {
 var globalRegistry = NewControllerRegistry()
 
 type SafeSoArmController struct {
+	portPath         string
 	bus              *feetech.Bus
 	group            *feetech.ServoGroup
 	calibratedServos map[int]*CalibratedServo
@@ -370,8 +371,8 @@ func GetSharedControllerWithCalibration(config *SoArm101Config, calibration SO10
 	return globalRegistry.GetController(config.Port, config, calibration, fromFile)
 }
 
-func ReleaseSharedController() {
-	globalRegistry.releaseFromCaller()
+func (s *SafeSoArmController) Release() {
+	globalRegistry.ReleaseController(s.portPath)
 }
 
 func ForceCloseSharedController() error {

@@ -226,7 +226,7 @@ func NewSO101(ctx context.Context, deps resource.Dependencies, name resource.Nam
 
 	model, err := makeSO101ModelFrame()
 	if err != nil {
-		ReleaseSharedController() // Clean up on error
+		controller.Release() // Clean up on error
 		return nil, fmt.Errorf("failed to create kinematic model: %w", err)
 	}
 
@@ -269,7 +269,7 @@ func NewSO101(ctx context.Context, deps resource.Dependencies, name resource.Nam
 
 	// Initialize and verify servo connections
 	if err := arm.initializeServos(); err != nil {
-		ReleaseSharedController() // Clean up on error
+		controller.Release() // Clean up on error
 		return nil, fmt.Errorf("failed to initialize servos: %w", err)
 	}
 
@@ -613,7 +613,7 @@ func (s *so101) Geometries(ctx context.Context, extra map[string]interface{}) ([
 
 func (s *so101) Close(context.Context) error {
 	s.cancelFunc()
-	ReleaseSharedController()
+	s.controller.Release()
 	return nil
 }
 

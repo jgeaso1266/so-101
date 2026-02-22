@@ -1267,7 +1267,7 @@ func (cs *so101CalibrationSensor) Close(ctx context.Context) error {
 	cs.recordingActive = false
 
 	if cs.controller != nil {
-		ReleaseSharedController()
+		cs.controller.Release()
 	}
 
 	return nil
