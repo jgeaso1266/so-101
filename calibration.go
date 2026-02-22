@@ -868,9 +868,27 @@ func (cs *so101CalibrationSensor) setState(state CalibrationState, instruction s
 	}
 }
 
+// encodeSignMagnitude12 encodes an integer into STS3215 sign-magnitude format.
+// The STS3215 uses a 12-bit sign-magnitude representation for position_offset:
+//   - bits 0-10: magnitude
+//   - bit 11: sign (0=positive, 1=negative)
+func encodeSignMagnitude12(value int) []byte {
+	magnitude := value
+	if magnitude < 0 {
+		magnitude = -magnitude
+	}
+	low := byte(magnitude & 0xFF)
+	high := byte((magnitude >> 8) & 0x07)
+	if value < 0 {
+		high |= 0x08 // set bit 11 (sign bit, stored in high byte bit 3)
+	}
+	return []byte{low, high}
+}
+
 // writeHomingOffset writes the homing offset to a servo's register
 func (cs *so101CalibrationSensor) writeHomingOffset(ctx context.Context, servoID, homingOffset int) error {
-	return cs.controller.WriteServoRegister(ctx, servoID, "torque_enable", []byte{(byte(128))})
+	data := encodeSignMagnitude12(homingOffset)
+	return cs.controller.WriteServoRegister(ctx, servoID, "position_offset", data)
 }
 
 // writeMinPositionLimit writes the minimum position limit to a servo's register
