@@ -178,12 +178,21 @@ func (s *SafeSoArmController) Stop(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for id, servo := range s.calibratedServos {
-		if err := servo.SetVelocity(ctx, 0); err != nil {
-			s.logger.Warnf("Failed to stop servo %d: %v", id, err)
+	// For position-mode servos, stopping means writing the current position
+	// as the goal so the servo holds its current location.
+	rawPositions, err := s.group.Positions(ctx)
+	if err != nil {
+		s.logger.Warnf("Stop: failed to read current positions, falling back to velocity=0: %v", err)
+		for id, servo := range s.calibratedServos {
+			if err := servo.SetVelocity(ctx, 0); err != nil {
+				s.logger.Warnf("Failed to stop servo %d: %v", id, err)
+			}
 		}
+		return nil
 	}
-	return nil
+
+	// Write current raw positions back as the goal to freeze motion
+	return s.group.SetPositions(ctx, rawPositions)
 }
 
 func (s *SafeSoArmController) Close() error {

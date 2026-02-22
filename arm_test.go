@@ -112,6 +112,26 @@ func TestCalculateJointLimits_AsymmetricCalibration(t *testing.T) {
 	}
 }
 
+func TestStop_CallsGroupPositions(t *testing.T) {
+	// Verify Stop() reaches s.group.Positions() rather than falling back to
+	// SetVelocity immediately. We confirm this by testing that Stop panics on
+	// a nil group — a no-op implementation would not panic.
+	// Full behavioral testing requires hardware (feetech.ServoGroup is concrete).
+	panicked := false
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicked = true
+			}
+		}()
+		c := &SafeSoArmController{} // group is nil
+		_ = c.Stop(context.Background())
+	}()
+	if !panicked {
+		t.Error("Stop() did not call group.Positions() — expected panic on nil group")
+	}
+}
+
 func TestArmUsesLongLivedContextForDiagnostics(t *testing.T) {
 	// Structural test: verify cancelCtx field exists and is long-lived.
 	// cancelCtx is created with context.WithCancel(context.Background()) and
