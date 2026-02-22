@@ -207,13 +207,17 @@ func (dis *so101Discovery) generateConfigs(
 
 	// Always generate calibration sensor if either servo responded
 	if hasArm || hasGripper {
+		sensorAttrs := map[string]interface{}{
+			"port": portPath,
+		}
+		if calibrationFile != "" {
+			sensorAttrs["calibration_file"] = calibrationFile
+		}
 		configs = append(configs, resource.Config{
-			Name:  "so101-calibration-" + portSuffix,
-			API:   sensor.API,
-			Model: SO101CalibrationSensorModel,
-			Attributes: map[string]interface{}{
-				"port": portPath,
-			},
+			Name:       "so101-calibration-" + portSuffix,
+			API:        sensor.API,
+			Model:      SO101CalibrationSensorModel,
+			Attributes: sensorAttrs,
 		})
 	}
 
