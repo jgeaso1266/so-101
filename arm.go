@@ -344,10 +344,6 @@ func (s *so101) MoveToJointPositions(ctx context.Context, positions []referencef
 		clampedPositions[i] = math.Max(min, math.Min(max, pos))
 	}
 
-	if err := s.controller.MoveServosToPositions(ctx, s.armServoIDs, clampedPositions, 0, 0); err != nil {
-		return fmt.Errorf("failed to move SO-101 arm: %w", err)
-	}
-
 	currentPositions, err := s.controller.GetJointPositionsForServos(ctx, s.armServoIDs)
 	if err != nil {
 		s.logger.Warnf("Failed to get current positions for timing calculation: %v", err)
@@ -371,6 +367,10 @@ func (s *so101) MoveToJointPositions(ctx context.Context, positions []referencef
 	}
 	if moveTimeSeconds > 10.0 {
 		moveTimeSeconds = 10.0 // Maximum move time for safety
+	}
+
+	if err := s.controller.MoveServosToPositions(ctx, s.armServoIDs, clampedPositions, 0, 0); err != nil {
+		return fmt.Errorf("failed to move SO-101 arm: %w", err)
 	}
 
 	time.Sleep(time.Duration(moveTimeSeconds * float64(time.Second)))
