@@ -108,7 +108,6 @@ type so101 struct {
 
 	cancelCtx  context.Context
 	cancelFunc func()
-	initCtx    context.Context // Context for initialization operations
 }
 
 func makeSO101ModelFrame() (referenceframe.Model, error) {
@@ -262,7 +261,6 @@ func NewSO101(ctx context.Context, deps resource.Dependencies, name resource.Nam
 		motion:       ms,
 		cancelCtx:    cancelCtx,
 		cancelFunc:   cancelFunc,
-		initCtx:      ctx, // Store initialization context
 	}
 
 	logger.Debugf("SO-101 configured with speed: %.1f deg/s, acceleration: %.1f deg/s²",
@@ -653,8 +651,8 @@ func (s *so101) initializeServosWithRetry(maxRetries int) error {
 
 // doServoInitialization performs the actual initialization steps
 func (s *so101) doServoInitialization() error {
-	// Use stored initialization context instead of creating new one
-	ctx := s.initCtx
+	// Use long-lived component context instead of constructor context
+	ctx := s.cancelCtx
 
 	// Ping all servos to ensure they're responding
 	s.logger.Debug("Pinging all servos...")
@@ -699,8 +697,8 @@ func (s *so101) doServoInitialization() error {
 
 // diagnoseConnection provides detailed diagnostics for troubleshooting
 func (s *so101) diagnoseConnection() error {
-	// Use stored initialization context instead of creating new one
-	ctx := s.initCtx
+	// Use long-lived component context instead of constructor context
+	ctx := s.cancelCtx
 
 	s.logger.Debug("Starting SO-101 arm connection diagnosis...")
 
@@ -727,8 +725,8 @@ func (s *so101) diagnoseConnection() error {
 
 // verifyServoConfig checks servo configuration
 func (s *so101) verifyServoConfig() error {
-	// Use stored initialization context instead of creating new one
-	ctx := s.initCtx
+	// Use long-lived component context instead of constructor context
+	ctx := s.cancelCtx
 
 	s.logger.Debug("Verifying arm servo configuration...")
 

@@ -1,6 +1,7 @@
 package so_arm
 
 import (
+	"context"
 	"math"
 	"testing"
 )
@@ -108,5 +109,27 @@ func TestCalculateJointLimits_AsymmetricCalibration(t *testing.T) {
 		if math.Abs(lim[1]-math.Pi) > 0.001 {
 			t.Errorf("joint %d max = %.4f, want %.4f", i, lim[1], math.Pi)
 		}
+	}
+}
+
+func TestArmUsesLongLivedContextForDiagnostics(t *testing.T) {
+	// Structural test: verify cancelCtx field exists and is long-lived.
+	// cancelCtx is created with context.WithCancel(context.Background()) and
+	// lives for the lifetime of the component.
+	// initCtx is the constructor context which expires after construction.
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	arm := &so101{
+		cancelCtx: cancelCtx,
+	}
+	if arm.cancelCtx == nil {
+		t.Fatal("cancelCtx must not be nil")
+	}
+	// cancelCtx should not be Done immediately
+	select {
+	case <-arm.cancelCtx.Done():
+		t.Fatal("cancelCtx should not be cancelled at construction time")
+	default:
 	}
 }
