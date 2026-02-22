@@ -95,13 +95,7 @@ func (r *ControllerRegistry) getExistingController(entry *ControllerEntry, confi
 	atomic.AddInt64(&entry.refCount, 1)
 	r.trackCaller(entry.config.Port)
 
-	return &SafeSoArmController{
-		bus:              entry.controller.bus,
-		group:            entry.controller.group,
-		calibratedServos: entry.controller.calibratedServos,
-		logger:           config.Logger,
-		calibration:      entry.calibration,
-	}, nil
+	return entry.controller, nil
 }
 
 func (r *ControllerRegistry) createNewController(portPath string, config *SoArm101Config, calibration SO101FullCalibration, fromFile bool) (*SafeSoArmController, error) {
@@ -217,13 +211,7 @@ func (r *ControllerRegistry) createNewController(portPath string, config *SoArm1
 		config.Logger.Debugf("Created new feetech servo bus with %d servos for port %s", len(calibratedServos), portPath)
 	}
 
-	return &SafeSoArmController{
-		bus:              bus,
-		group:            group,
-		calibratedServos: calibratedServos,
-		logger:           config.Logger,
-		calibration:      finalCalibration,
-	}, nil
+	return entry.controller, nil
 }
 
 func (r *ControllerRegistry) ReleaseController(portPath string) {
