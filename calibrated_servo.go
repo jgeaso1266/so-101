@@ -54,8 +54,9 @@ func (c *MotorCalibration) Normalize(rawValue int) (float64, error) {
 
 	case NormModeDegrees:
 		center := float64(c.RangeMin+c.RangeMax) / 2.0
-		maxResolution := float64(4095)
-		normalized = (float64(rawValue) - center) * 360 / maxResolution
+		halfRange := float64(c.RangeMax-c.RangeMin) / 2.0
+		normalized = (float64(rawValue) - center) / halfRange * 180.0
+		normalized = math.Max(-180.0, math.Min(180.0, normalized))
 
 	default:
 		return 0, fmt.Errorf("unknown normalization mode: %d", c.NormMode)
@@ -121,8 +122,8 @@ func (c *MotorCalibration) Denormalize(normalizedValue float64) (int, error) {
 
 	case NormModeDegrees:
 		center := float64(c.RangeMin+c.RangeMax) / 2.0
-		maxResolution := float64(4095)
-		rawValue = int((adjustedValue * maxResolution / 360) + center)
+		halfRange := float64(c.RangeMax-c.RangeMin) / 2.0
+		rawValue = int(math.Round(adjustedValue/180.0*halfRange + center))
 
 	default:
 		return 0, fmt.Errorf("unknown normalization mode: %d", c.NormMode)
