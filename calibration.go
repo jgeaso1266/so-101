@@ -835,7 +835,26 @@ func (cs *so101CalibrationSensor) getCurrentPositions(ctx context.Context) (map[
 
 	positionData := make(map[string]any)
 	for i, servoID := range cs.cfg.ServoIDs {
-		rawPos := int(positions[i] * 4095 / (2 * math.Pi))
+		var rawPos int
+		cal := cs.controller.getCalibrationForServo(servoID)
+		if cal != nil {
+			var normalizedVal float64
+			if isGripperServo(servoID) {
+				// Gripper: radian-encoded percentage, convert back to 0-100
+				normalizedVal = (positions[i]/math.Pi + 1.0) / 2.0 * 100.0
+			} else {
+				// Arm: radians to degrees
+				normalizedVal = positions[i] * 180.0 / math.Pi
+			}
+			var err error
+			rawPos, err = cal.Denormalize(normalizedVal)
+			if err != nil {
+				return nil, fmt.Errorf("failed to denormalize position for servo %d: %w", servoID, err)
+			}
+		} else {
+			// Fallback: approximate center-based conversion
+			rawPos = int((positions[i]/(2*math.Pi)+0.5)*4095)
+		}
 
 		joint := cs.joints[servoID]
 		joint.CurrentPos = rawPos

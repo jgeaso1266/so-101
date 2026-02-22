@@ -1,6 +1,7 @@
 package so_arm
 
 import (
+	"math"
 	"testing"
 )
 
@@ -53,5 +54,47 @@ func TestEncodeSignMagnitude12_RoundTrip(t *testing.T) {
 			t.Errorf("Round-trip failed for %d: encoded to [0x%02X,0x%02X], decoded to %d",
 				v, encoded[0], encoded[1], decoded)
 		}
+	}
+}
+
+func TestGetCurrentPositionsNilCalibrationFallback(t *testing.T) {
+	// When calibration is nil, getCurrentPositions uses the fallback formula:
+	//   rawPos = int((positions[i]/(2*math.Pi)+0.5)*4095)
+	// This test verifies the round-trip math directly.
+
+	fallback := func(pos float64) int {
+		return int((pos/(2*math.Pi)+0.5)*4095)
+	}
+
+	// At 0 radians, the result should be the midpoint: 2047
+	if got := fallback(0); got != 2047 {
+		t.Errorf("fallback(0) = %d, want 2047", got)
+	}
+
+	// At π radians, the result should be the maximum: 4095
+	if got := fallback(math.Pi); got != 4095 {
+		t.Errorf("fallback(π) = %d, want 4095", got)
+	}
+}
+
+func TestGetCurrentPositionsRawConversion(t *testing.T) {
+	cal := &MotorCalibration{
+		ID: 1, DriveMode: 0, HomingOffset: 0,
+		RangeMin: 500, RangeMax: 3500,
+		NormMode: NormModeDegrees,
+	}
+
+	// Simulate: raw=3500 -> Normalize -> 180° -> DegToRad -> π rad
+	normalized, _ := cal.Normalize(3500)       // should be 180.0
+	radiansVal := normalized * math.Pi / 180.0 // π
+
+	// The correct inverse: radians -> degrees -> Denormalize -> raw
+	degreesVal := radiansVal * 180.0 / math.Pi // 180.0
+	raw, err := cal.Denormalize(degreesVal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if absInt(raw-3500) > 1 {
+		t.Errorf("round-trip: got raw=%d, want 3500", raw)
 	}
 }
