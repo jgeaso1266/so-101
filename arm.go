@@ -129,38 +129,38 @@ func makeSO101ModelFrame() (referenceframe.Model, error) {
 // calculateJointLimits dynamically calculates joint limits from calibration data
 func (s *so101) calculateJointLimits() [][2]float64 {
 	limits := make([][2]float64, len(s.armServoIDs))
-
 	calibration := s.controller.GetCalibration()
 
-	// Map servo IDs to calibration data
-	jointCals := []*MotorCalibration{
-		calibration.ShoulderPan,
-		calibration.ShoulderLift,
-		calibration.ElbowFlex,
-		calibration.WristFlex,
-		calibration.WristRoll,
-	}
-
-	for i, cal := range jointCals {
+	for i, servoID := range s.armServoIDs {
+		cal := calibration.GetMotorCalibrationByID(servoID)
 		if cal == nil {
-			// Use default limits if calibration is missing
 			limits[i] = [2]float64{-math.Pi, math.Pi}
 			continue
 		}
 
-		// Convert calibration range to radians using the same logic as before
-		center := float64(cal.RangeMin+cal.RangeMax) / 2
-		halfRange := float64(cal.RangeMax-cal.RangeMin) / 2
+		minNorm, err := cal.Normalize(cal.RangeMin)
+		if err != nil {
+			limits[i] = [2]float64{-math.Pi, math.Pi}
+			continue
+		}
+		maxNorm, err := cal.Normalize(cal.RangeMax)
+		if err != nil {
+			limits[i] = [2]float64{-math.Pi, math.Pi}
+			continue
+		}
 
-		// Calculate min limit (RangeMin -> radians)
-		minNormalized := (float64(cal.RangeMin) - center) / halfRange
-		minRadians := minNormalized * math.Pi
-
-		// Calculate max limit (RangeMax -> radians)
-		maxNormalized := (float64(cal.RangeMax) - center) / halfRange
-		maxRadians := maxNormalized * math.Pi
-
-		limits[i] = [2]float64{minRadians, maxRadians}
+		var minRad, maxRad float64
+		if isGripperServo(servoID) {
+			minRad = (minNorm/100.0*2.0 - 1.0) * math.Pi
+			maxRad = (maxNorm/100.0*2.0 - 1.0) * math.Pi
+		} else {
+			minRad = minNorm * math.Pi / 180.0
+			maxRad = maxNorm * math.Pi / 180.0
+		}
+		if minRad > maxRad {
+			minRad, maxRad = maxRad, minRad
+		}
+		limits[i] = [2]float64{minRad, maxRad}
 	}
 
 	return limits
